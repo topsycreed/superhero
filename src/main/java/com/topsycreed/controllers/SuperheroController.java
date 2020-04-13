@@ -65,17 +65,12 @@ public class SuperheroController {
         return response;
     }
 
-    public Response getHeroWithInvalidId(int id) {
+    public Response getHeroWithInvalidId() {
         Response response = RestAssured.given(requestSpecification)
                 .get("superheroes/" + "invalid");
         log(response);
         return response;
     }
-
-//    public Response getAllHeroes() {
-//        return RestAssured.given(requestSpecification)
-//                .get("superheroes");
-//    }
 
     public Response getAllHeroes() {
         Response response = RestAssured.given(requestSpecification)
