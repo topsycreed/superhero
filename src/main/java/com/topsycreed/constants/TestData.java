@@ -19,3 +19,4 @@ public class TestData {
     public static final ErrorMessageModel NOT_FOUND_ERROR = new ErrorMessageModel(HttpURLConnection.HTTP_NOT_FOUND, "Not Found");
     public static final ErrorMessageModel BAD_REQUEST_ERROR = new ErrorMessageModel(HttpURLConnection.HTTP_BAD_REQUEST, "Bad Request");
 }
+

@@ -1,23 +1,72 @@
 package com.topsycreed.superhero;
 
 import com.topsycreed.constants.TestData;
+import com.topsycreed.controllers.SOAPController;
 import com.topsycreed.controllers.SuperheroController;
 import com.topsycreed.models.ErrorMessageModel;
 import com.topsycreed.models.SuperheroModel;
+import io.restassured.path.xml.XmlPath;
+import io.restassured.path.xml.element.Node;
 import io.restassured.response.Response;
 import org.testng.annotations.Test;
 
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Objects;
+import java.util.*;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 
+import static io.restassured.path.xml.XmlPath.from;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestSuperheroes {
+
+    @Test(groups = {"pdf"}, description = "Simple PDF test")
+    public void simplePDF() throws IOException {
+        String filePath = "src/main/resources/example.pdf";
+        File file = new File(filePath);
+        String text = getText(file);
+    }
+
+    private String getText(File pdfFile) throws IOException {
+        try (PDDocument doc = PDDocument.load(pdfFile)) {
+            return new PDFTextStripper().getText(doc);
+        }
+    }
+
+//    private File getFile() throws IOException {
+//        String filePath = "src/main/resources/example.pdf";
+//        try (OutputStream out = new FileOutputStream(filePath)) {
+//            out.write(downloadFile());
+//        }
+//        return new File(filePath);
+//    }
+
+    @Test(groups = {"get", "smoke"}, description = "Simple SOAP")
+    public void simpleSOAP() {
+        String body = "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:sch=\"http://csssr.com/schemas\">\n" +
+                "   <soapenv:Header/>\n" +
+                "   <soapenv:Body>\n" +
+                "      <sch:GetCompanyRequest>\n" +
+                "         <sch:CompanyId>5e942ca330148f0001cd8806</sch:CompanyId>\n" +
+                "      </sch:GetCompanyRequest>\n" +
+                "   </soapenv:Body>\n" +
+                "</soapenv:Envelope>";
+        Response response = new SOAPController().get(body);
+        System.out.println(response.statusCode());
+        response.getBody().prettyPrint();
+        String xml = response.andReturn().asString();
+        XmlPath xmlPath = new XmlPath(xml);
+        String nodes = xmlPath.get("Envelope.Body.GetCompanyResponse.Company.Name");
+//        Iterator<Node> iterator = rootNode.children().nodeIterator();
+//        while (iterator.hasNext()) {
+//            Node node = iterator.next();
+//            System.out.println("Name: " + node.name() + ", value: " + node.value());
+////            result.put(node.name(), node.value());
+//        }
+    }
 
     @Test(groups = {"get", "smoke"}, description = "Get all superheroes and check status code")
     public void getAllSuperheroesTest() {
@@ -30,6 +79,7 @@ public class TestSuperheroes {
         SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITHOUT_PHONE;
         Response response = new SuperheroController().getAllHeroes();
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
+        //unmarshalling
         SuperheroModel[] actualSuperheroModels = response.as(SuperheroModel[].class);
         assertThat(getModelById(actualSuperheroModels, expectedSuperheroModel.getId())).isEqualTo(expectedSuperheroModel);
     }
