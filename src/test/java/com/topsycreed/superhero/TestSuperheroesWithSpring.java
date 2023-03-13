@@ -3,6 +3,7 @@ package com.topsycreed.superhero;
 import com.topsycreed.CommonConfiguration;
 import com.topsycreed.controllers.SuperheroController;
 import com.topsycreed.extenstions.RestAssuredExtension;
+import com.topsycreed.extenstions.ValidSuperheroParameterResolver;
 import com.topsycreed.models.SuperheroModel;
 import io.qameta.allure.AllureId;
 import io.qameta.allure.Link;
@@ -72,5 +73,16 @@ public class TestSuperheroesWithSpring {
     public void getWithExtend() {
         String response = RestAssured.get("/superheroes/1").prettyPrint();
         assertThat(response).contains("Doctor Strange");
+    }
+
+    @Test
+    @AllureId("4")
+    @DisplayName("Add a new valid superhero and check status code")
+    @Link(name = "JIRA-123", url = "https://jira.project.ru/browse/JIRA-123")
+    @Owner("g.chursov")
+    @ExtendWith(ValidSuperheroParameterResolver.class)
+    public void addValidSuperheroTest(SuperheroModel validHero) {
+        Response response = superheroController.addNewHero(validHero);
+        assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
     }
 }
