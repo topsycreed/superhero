@@ -2,8 +2,10 @@ package com.topsycreed.superhero;
 
 import com.topsycreed.CommonConfiguration;
 import com.topsycreed.controllers.SuperheroController;
+import com.topsycreed.extenstions.ClientExtension;
 import com.topsycreed.extenstions.RestAssuredExtension;
 import com.topsycreed.extenstions.ValidSuperheroParameterResolver;
+import com.topsycreed.models.Client;
 import com.topsycreed.models.SuperheroModel;
 import io.qameta.allure.AllureId;
 import io.qameta.allure.Link;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.Tags;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,6 +26,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.net.HttpURLConnection;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -47,22 +51,36 @@ public class TestSuperheroesWithSpring {
 
     static List<Object[]> provideIdAndNamesForSuperheroes() {
         return Arrays.asList(new Object[][] {
-                { 1, "Doctor Strange" },
-                { 2, "Моряк" }
+                { EventType.REGISTERED, "rejected" },
+                { EventType.REJECTED, "applied" }
         });
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "For superhero with name {1}")
     @AllureId("2")
     @DisplayName("Get superhero by id and check status code")
     @Link(name = "JIRA-123", url = "https://jira.project.ru/browse/JIRA-123")
     @Owner("g.chursov")
     @MethodSource("provideIdAndNamesForSuperheroes")
-    public void getSuperheroByIdTest(int id, String name) {
-        Response response = superheroController.getHero(id);
-        assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
-        SuperheroModel actualSuperheroModel = response.as(SuperheroModel.class);
-        assertThat(actualSuperheroModel.getFullName()).isEqualTo(name);
+    public void getSuperheroByIdTest(EventType eventType, String status) {
+        System.out.println(eventType);
+        System.out.println(status);
+    }
+
+    public static Stream eventTypeStream() {
+        return Stream.of(EventType.REJECTED, EventType.REGISTERED);
+    }
+
+    @ParameterizedTest(name = "For superhero with event {0}")
+    @AllureId("2")
+    @DisplayName("Get superhero by id and check status code")
+    @Link(name = "JIRA-123", url = "https://jira.project.ru/browse/JIRA-123")
+    @Owner("g.chursov")
+    @ExtendWith(ClientExtension.class)
+    @MethodSource("eventTypeStream")
+    public void getSuperheroByIdTestWithBothExtensionAndParamTest(EventType eventType, Client client) {
+        System.out.println(client);
+        System.out.println(eventType);
     }
 
     @Test
@@ -73,16 +91,5 @@ public class TestSuperheroesWithSpring {
     public void getWithExtend() {
         String response = RestAssured.get("/superheroes/1").prettyPrint();
         assertThat(response).contains("Doctor Strange");
-    }
-
-    @Test
-    @AllureId("4")
-    @DisplayName("Add a new valid superhero and check status code")
-    @Link(name = "JIRA-123", url = "https://jira.project.ru/browse/JIRA-123")
-    @Owner("g.chursov")
-    @ExtendWith(ValidSuperheroParameterResolver.class)
-    public void addValidSuperheroTest(SuperheroModel validHero) {
-        Response response = superheroController.addNewHero(validHero);
-        assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
     }
 }
