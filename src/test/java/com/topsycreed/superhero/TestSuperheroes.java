@@ -5,6 +5,7 @@ import com.topsycreed.controllers.SuperheroController;
 import com.topsycreed.models.ErrorMessageModel;
 import com.topsycreed.models.SuperheroModel;
 import io.restassured.response.Response;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.net.HttpURLConnection;
@@ -18,6 +19,11 @@ import java.util.Objects;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestSuperheroes {
+
+    @DataProvider(name = "heroes")
+    public static Object[][] getValidHeroes() {
+        return new Object[][]{{TestData.SUPERHERO_VALID_WITHOUT_PHONE}, {TestData.SUPERHERO_VALID_WITH_PHONE}};
+    }
 
     @Test(groups = {"get", "smoke"}, description = "Get all superheroes and check status code")
     public void getAllSuperheroesTest() {
@@ -43,10 +49,9 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(groups = {"get", "smoke"}, description = "Get superhero by an id and check status code")
-    public void getSuperheroByIdTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITHOUT_PHONE;
-        Response response = new SuperheroController().getHero(expectedSuperheroModel.getId());
+    @Test(dataProvider = "heroes", groups = {"get", "smoke"}, description = "Get superhero by an id and check status code")
+    public void getSuperheroByIdTest(SuperheroModel hero) {
+        Response response = new SuperheroController().getHero(hero.getId());
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
     }
 
