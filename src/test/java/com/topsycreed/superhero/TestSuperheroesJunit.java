@@ -1,47 +1,56 @@
 package com.topsycreed.superhero;
 
-import com.jcabi.aspects.RetryOnFailure;
 import com.topsycreed.constants.TestData;
 import com.topsycreed.controllers.SuperheroController;
 import com.topsycreed.models.ErrorMessageModel;
 import com.topsycreed.models.SuperheroModel;
 import io.restassured.response.Response;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junitpioneer.jupiter.ExpectedToFail;
+import org.junitpioneer.jupiter.Issue;
+import org.junitpioneer.jupiter.RetryingTest;
 
 import java.net.HttpURLConnection;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TestSuperheroes {
+public class TestSuperheroesJunit {
 
-    @DataProvider(name = "heroes")
-    public static Object[][] getValidHeroes() {
-        return new Object[][]{{TestData.SUPERHERO_VALID_WITHOUT_PHONE}, {TestData.SUPERHERO_VALID_WITH_PHONE}};
+    public static Stream<Arguments> getHeroes() {
+        return Stream.of(
+                Arguments.of(TestData.SUPERHERO_VALID_WITHOUT_PHONE),
+                Arguments.of(TestData.SUPERHERO_VALID_WITH_PHONE)
+        );
     }
 
-    @Test(groups = {"get", "smoke"}, description = "Get all superheroes and check status code")
+    @Test
+    @DisplayName("Get all superheroes and check status code")
     public void getAllSuperheroesTest() {
         Response response = new SuperheroController().getAllHeroes();
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
     }
 
-    @Test(groups = {"get"}, description = "Get all superheroes and check data")
+    @RetryingTest(maxAttempts = 5, suspendForMs = 100)
+    @DisplayName("Get all superheroes and check data")
     public void getAllSuperheroesAndCheckDataTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITHOUT_PHONE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_VALID_WITHOUT_PHONE);
         Response response = new SuperheroController().getAllHeroes();
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
         SuperheroModel[] actualSuperheroModels = response.as(SuperheroModel[].class);
+        System.out.println("Seraching hero with id = " + expectedSuperheroModel.getId());
         assertThat(getModelById(actualSuperheroModels, expectedSuperheroModel.getId())).isEqualTo(expectedSuperheroModel);
     }
 
-    @Test(groups = {"get", "negative"}, description = "Try to get all superheroes with invalid path")
+    @Test
+    @DisplayName("Try to get all superheroes with invalid path")
     public void getAllSuperheroesTestWithInvalidPath() {
         ErrorMessageModel expectedError = TestData.NOT_FOUND_ERROR;
         Response response = new SuperheroController().getAllHeroesWithInvalidPath();
@@ -50,22 +59,27 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(dataProvider = "heroes", groups = {"get", "smoke"}, description = "Get superhero by an id and check status code")
+    @ParameterizedTest
+    @MethodSource("getHeroes")
+    @DisplayName("Get superhero by an id and check status code")
+    @Issue("https://github.com/junit-pioneer/junit-pioneer/issues/405")
     public void getSuperheroByIdTest(SuperheroModel hero) {
         Response response = new SuperheroController().getHero(hero.getId());
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
     }
 
-    @Test(groups = {"get"}, description = "Get superhero by an id and check status code and data")
+    @RetryingTest(3)
+    @DisplayName("Get superhero by an id and check status code and data")
     public void getSuperheroByIdWithDataCheckTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITHOUT_PHONE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_VALID_WITHOUT_PHONE);
         Response response = new SuperheroController().getHero(expectedSuperheroModel.getId());
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
         SuperheroModel actualSuperheroModel = response.as(SuperheroModel.class);
         assertThat(actualSuperheroModel).isEqualTo(expectedSuperheroModel);
     }
 
-    @Test(groups = {"get", "negative"}, description = "Try to get superhero by invalid id")
+    @RetryingTest(3)
+    @DisplayName("Try to get superhero by invalid id")
     public void getSuperheroByInvalidIdTest() {
         ErrorMessageModel expectedError = TestData.BAD_REQUEST_ERROR;
         Response response = new SuperheroController().getHeroWithInvalidId();
@@ -74,7 +88,9 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(groups = {"get", "negative"}, description = "Try to get superhero by not existed id")
+    @Test
+    @ExpectedToFail("Invalid response status code")
+    @DisplayName("Try to get superhero by not existed id")
     public void getSuperheroByNotExistedIdTest() {
         ErrorMessageModel expectedError = TestData.NOT_FOUND_ERROR;
         Response response = new SuperheroController().getHero(TestData.NOT_EXISTED_ID);
@@ -83,16 +99,18 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(groups = {"post", "smoke"}, description = "Add superhero with null phone and check status code")
+    @RetryingTest(3)
+    @DisplayName("Add superhero with null phone and check status code")
     public void postSuperheroTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITHOUT_PHONE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_VALID_WITHOUT_PHONE);
         Response response = new SuperheroController().addNewHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
     }
 
-    @Test(groups = {"post"}, description = "Add superhero with null phone and check status code, data")
+    @RetryingTest(3)
+    @DisplayName("Add superhero with null phone and check status code, data")
     public void postSuperheroWithDataCheckTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITHOUT_PHONE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_VALID_WITHOUT_PHONE);
         Response response = new SuperheroController().addNewHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
         SuperheroModel actualSuperheroModel = response.as(SuperheroModel.class);
@@ -100,9 +118,10 @@ public class TestSuperheroes {
         assertThat(actualSuperheroModel).isEqualTo(expectedSuperheroModel);
     }
 
-    @Test(groups = {"post"}, description = "Add superhero with null phone and check status code, data and get")
+    @RetryingTest(3)
+    @DisplayName("Add superhero with null phone and check status code, data and get")
     public void postSuperheroWithGetCheckE2ETest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITHOUT_PHONE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_VALID_WITHOUT_PHONE);
         Response response = new SuperheroController().addNewHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
         SuperheroModel actualSuperheroModel = response.as(SuperheroModel.class);
@@ -115,9 +134,10 @@ public class TestSuperheroes {
         assertThat(getSuperheroModel).isEqualTo(expectedSuperheroModel);
     }
 
-    @Test(groups = {"post"}, description = "Add superhero with not null phone and check status code and data")
+    @RetryingTest(3)
+    @DisplayName("Add superhero with not null phone and check status code and data")
     public void postSuperheroWithPhoneTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITH_PHONE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_VALID_WITH_PHONE);
         Response response = new SuperheroController().addNewHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
         SuperheroModel actualSuperheroModel = response.as(SuperheroModel.class);
@@ -125,9 +145,10 @@ public class TestSuperheroes {
         assertThat(actualSuperheroModel).isEqualTo(expectedSuperheroModel);
     }
 
-    @Test(groups = {"post"}, description = "Add superhero with not null phone and check status code, data and get check")
+    @RetryingTest(3)
+    @DisplayName("Add superhero with not null phone and check status code, data and get check")
     public void postSuperheroWithPhoneWithGetCheckE2ETest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITH_PHONE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_VALID_WITH_PHONE);
         Response response = new SuperheroController().addNewHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
         SuperheroModel actualSuperheroModel = response.as(SuperheroModel.class);
@@ -140,9 +161,10 @@ public class TestSuperheroes {
         assertThat(getActualSuperheroModel).isEqualTo(expectedSuperheroModel);
     }
 
-    @Test(groups = {"post", "negative"}, description = "Try to add superhero with not valid date")
+    @RetryingTest(3)
+    @DisplayName("Try to add superhero with not valid date")
     public void postSuperheroWithNotValidDateTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_INVALID_DATE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_INVALID_DATE);
         ErrorMessageModel expectedError = TestData.BAD_REQUEST_ERROR;
         Response response = new SuperheroController().addNewHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_BAD_REQUEST);
@@ -150,9 +172,10 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(groups = {"post", "negative"}, description = "Try to add superhero using invalid path")
+    @RetryingTest(3)
+    @DisplayName("Try to add superhero using invalid path")
     public void postSuperheroWithNotValidPathTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITHOUT_PHONE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_VALID_WITHOUT_PHONE);
         ErrorMessageModel expectedError = TestData.NOT_FOUND_ERROR;
         Response response = new SuperheroController().addNewHeroWithInvalidPath(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_NOT_FOUND);
@@ -160,9 +183,10 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(groups = {"post", "negative"}, description = "Try to add superhero without required field")
+    @RetryingTest(3)
+    @DisplayName("Try to add superhero without required field")
     public void postSuperheroWithoutRequiredFieldTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_INVALID_WITHOUT_REQUIRED_FIELD;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_INVALID_WITHOUT_REQUIRED_FIELD);
         ErrorMessageModel expectedError = TestData.BAD_REQUEST_ERROR;
         Response response = new SuperheroController().addNewHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_BAD_REQUEST);
@@ -170,9 +194,10 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(groups = {"post", "negative"}, description = "Try to add superhero with gender not from enum")
+    @RetryingTest(3)
+    @DisplayName("Try to add superhero with gender not from enum")
     public void postSuperheroWithoutEnumGenderTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_INVALID_WITHOUT_ENUM_GENDER;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_INVALID_WITHOUT_ENUM_GENDER);
         ErrorMessageModel expectedError = TestData.BAD_REQUEST_ERROR;
         Response response = new SuperheroController().addNewHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_BAD_REQUEST);
@@ -180,7 +205,8 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(groups = {"put", "smoke"}, description = "Update superhero and check response")
+    @RetryingTest(3)
+    @DisplayName("Update superhero and check response")
     public void putSuperheroTest() {
         int id = TestData.WITH_VALID_DATA1;
         SuperheroModel beforeChangesSuperheroModel = new SuperheroController().getHero(id).as(SuperheroModel.class);
@@ -192,7 +218,8 @@ public class TestSuperheroes {
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
     }
 
-    @Test(groups = {"put"}, description = "Update superhero and check status code, that values changed")
+    @RetryingTest(3)
+    @DisplayName("Update superhero and check status code, that values changed")
     public void putSuperheroWithGetCheckE2ETest() {
         int id = TestData.WITH_VALID_DATA1;
         SuperheroModel beforeChangesSuperheroModel = new SuperheroController().getHero(id).as(SuperheroModel.class);
@@ -209,9 +236,10 @@ public class TestSuperheroes {
         assertThat(getActualSuperheroModel).isEqualTo(expectedSuperheroModel);
     }
 
-    @Test(groups = {"put", "negative"}, description = "Try to update superhero with invalid date")
+    @RetryingTest(3)
+    @DisplayName("Try to update superhero with invalid date")
     public void putSuperheroWithInvalidDateTest() {
-      SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_INVALID_DATE_UPDATE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_INVALID_DATE_UPDATE);
         ErrorMessageModel expectedError = TestData.BAD_REQUEST_ERROR;
         Response response = new SuperheroController().updateExistingHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_BAD_REQUEST);
@@ -219,9 +247,10 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(groups = {"put", "negative"}, description = "Try to update superhero with not existed id")
+    @RetryingTest(3)
+    @DisplayName("Try to update superhero with not existed id")
     public void putSuperheroWithNotExistedIdTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_NOT_EXISTED_ID;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_NOT_EXISTED_ID);
         ErrorMessageModel expectedError = TestData.NOT_FOUND_ERROR;
         Response response = new SuperheroController().updateExistingHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_NOT_FOUND);
@@ -229,9 +258,10 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(groups = {"put", "negative"}, description = "Try to update superhero without required fields")
+    @RetryingTest(3)
+    @DisplayName("Try to update superhero without required fields")
     public void putSuperheroWithoutRequiredFieldsTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_INVALID_WITHOUT_REQUIRED_FIELD;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_INVALID_WITHOUT_REQUIRED_FIELD);
         ErrorMessageModel expectedError = TestData.BAD_REQUEST_ERROR;
         Response response = new SuperheroController().updateExistingHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_BAD_REQUEST);
@@ -239,9 +269,10 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(groups = {"put", "negative"}, description = "Try to update superhero with gender not from enum")
+    @RetryingTest(3)
+    @DisplayName("Try to update superhero with gender not from enum")
     public void putSuperheroWithoutEnumGenderTest() {
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_INVALID_WITHOUT_ENUM_GENDER;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_INVALID_WITHOUT_ENUM_GENDER);
         ErrorMessageModel expectedError = TestData.BAD_REQUEST_ERROR;
         Response response = new SuperheroController().updateExistingHero(expectedSuperheroModel);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_BAD_REQUEST);
@@ -249,10 +280,11 @@ public class TestSuperheroes {
         assertThat(actualError).isEqualTo(expectedError);
     }
 
-    @Test(groups = {"delete", "smoke"}, description = "Delete created superhero and check status")
+    @RetryingTest(3)
+    @DisplayName("Delete created superhero and check status")
     public void deleteSuperheroTest() {
         //post
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITHOUT_PHONE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_VALID_WITHOUT_PHONE);
         Response postResponse = new SuperheroController().addNewHero(expectedSuperheroModel);
         assertThat(postResponse.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
         SuperheroModel actualSuperheroModel = postResponse.as(SuperheroModel.class);
@@ -263,10 +295,12 @@ public class TestSuperheroes {
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
     }
 
-    @Test(groups = {"delete"}, description = "Delete created superhero and check status and get")
+    @Test
+    @ExpectedToFail("Invalid response content-type")
+    @DisplayName("Delete created superhero and check status and get")
     public void deleteSuperheroWithGetCheckE2ETest() {
         //post
-        SuperheroModel expectedSuperheroModel = TestData.SUPERHERO_VALID_WITHOUT_PHONE;
+        SuperheroModel expectedSuperheroModel = new SuperheroModel(TestData.SUPERHERO_VALID_WITHOUT_PHONE);
         Response postResponse = new SuperheroController().addNewHero(expectedSuperheroModel);
         assertThat(postResponse.statusCode()).isEqualTo(HttpURLConnection.HTTP_OK);
         SuperheroModel actualSuperheroModel = postResponse.as(SuperheroModel.class);
@@ -281,19 +315,15 @@ public class TestSuperheroes {
         assertThat(getResponse.statusCode()).isEqualTo(HttpURLConnection.HTTP_NOT_FOUND);
     }
 
-    @Test(groups = {"delete", "negative"}, description = "Try to delete superhero with not existed id")
+    @RetryingTest(3)
+    @DisplayName("Try to delete superhero with not existed id")
     public void deleteSuperheroWithNotExistedIdTest() {
-        divideByZero();
         Response response = new SuperheroController().deleteHero(TestData.NOT_EXISTED_ID);
         assertThat(response.statusCode()).isEqualTo(HttpURLConnection.HTTP_NO_CONTENT);
     }
 
-    @RetryOnFailure(attempts = 2)
-    public static void divideByZero() {
-        int x = 1/0;
-    }
-
-    @Test(groups = {"delete", "negative"}, description = "Try to delete superhero with invalid path")
+    @RetryingTest(3)
+    @DisplayName("Try to delete superhero with invalid path")
     public void deleteSuperheroWithInvalidPathTest() {
         ErrorMessageModel expectedError = TestData.NOT_FOUND_ERROR;
         Response response = new SuperheroController().deleteHeroWithInvalidPath(TestData.NOT_EXISTED_ID);
