@@ -20,4 +20,14 @@ public class SuperheroModel {
     public enum Gender {
         M, F
     }
+
+    public SuperheroModel(SuperheroModel hero) {
+        this.id = hero.getId();
+        this.fullName = hero.getFullName();
+        this.birthDate = hero.getBirthDate();
+        this.city = hero.getCity();
+        this.mainSkill = hero.getMainSkill();
+        this.gender = hero.getGender();
+        this.phone = hero.getPhone();
+    }
 }
